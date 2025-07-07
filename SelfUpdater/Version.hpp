@@ -3,9 +3,9 @@
 #include <Windows.h>
 #include <cstdint>
 #include <format>
+#include <iostream>
 #include <string>
 #include <vector>
-#include <iostream>
 
 #include "Utils.hpp"
 
@@ -116,6 +116,16 @@ public:
 		return m_build;
 	}
 
+	std::wstring ToWString(const uint32_t lvl = 3) const
+	{
+		return utils::s2ws(toString(lvl));
+	}
+
+	std::string ToString(const uint32_t lvl = 3) const
+	{
+		return toString(lvl);
+	}
+
 	bool operator>(const ResVersion& other) const
 	{
 		if (m_major > other.m_major)
@@ -215,6 +225,50 @@ public:
 		return *this > other || *this == other;
 	}
 
+	///////////////////////////
+	/// String Operators Start
+	///////////////////////////
+
+	std::string operator+(const std::string& str) const
+	{
+		return str + ToString(4);
+	}
+
+	std::string operator+(const char* pStr) const
+	{
+		return std::string(pStr) + ToString(4);
+	}
+
+	std::wstring operator+(const std::wstring& str) const
+	{
+		return str + ToWString(4);
+	}
+
+	std::wstring operator+(const wchar_t* pStr) const
+	{
+		return std::wstring(pStr) + ToWString(4);
+	}
+
+	friend std::string operator+(const std::string& str, const ResVersion& version)
+	{
+		return str + version.ToString(4);
+	}
+
+	friend std::string operator+(const char* pStr, const ResVersion& version)
+	{
+		return std::string(pStr) + version.ToString(4);
+	}
+
+	friend std::wstring operator+(const std::wstring& str, const ResVersion& version)
+	{
+		return str + version.ToWString(4);
+	}
+
+	friend std::wstring operator+(const wchar_t* pStr, const ResVersion& version)
+	{
+		return std::wstring(pStr) + version.ToWString(4);
+	}
+
 	friend std::wostream& operator<<(std::wostream& os, const ResVersion& version)
 	{
 		os << version.ToWString(4);
@@ -227,15 +281,9 @@ public:
 		return os;
 	}
 
-	std::wstring ToWString(const uint32_t lvl = 3) const
-	{
-		return utils::s2ws(toString(lvl));
-	}
-
-	std::string ToString(const uint32_t lvl = 3) const
-	{
-		return toString(lvl);
-	}
+	///////////////////////////
+	/// String Operators End
+	///////////////////////////
 
 	static ResVersion GetVersionInfo()
 	{
