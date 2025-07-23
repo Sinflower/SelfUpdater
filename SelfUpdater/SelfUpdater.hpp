@@ -20,6 +20,10 @@
 #define SU_VERSION_FILENAME L"versions.txt"
 #endif
 
+#ifndef SU_GITHUB_BASE_URL
+#define SU_GITHUB_BASE_URL L"https://github.com/{}/{}/releases/latest/download/"
+#endif
+
 // Based on: https://www.codeproject.com/Articles/1205548/An-efficient-way-for-automatic-updating
 
 class SelfUpdater
@@ -59,6 +63,11 @@ public:
 	static void Setup()
 	{
 		GetInstance();
+	}
+
+	static void SetBaseUrlGitHub(const std::wstring& username, const std::wstring& repo)
+	{
+		s_baseUrl = std::format(SU_GITHUB_BASE_URL, username, repo);
 	}
 
 	static void SetMainHWnd(HWND hWnd)
@@ -206,13 +215,19 @@ private:
 
 	bool doUpdate()
 	{
+		if (s_baseUrl.empty())
+		{
+			std::cerr << "Base URL is not set. Please set it using SelfUpdater::SetBaseUrl()" << std::endl;
+			return false;
+		}
+
 		std::wstring url = std::format(L"{}/{}", s_baseUrl, m_exeName);
 		m_tempExePath    = std::format(L"{}\\{}{}", std::filesystem::temp_directory_path().wstring(), TEMP_PREFIX, m_exeName);
 
 		bool res = selfUpdater::downloader::Download(url, m_tempExePath);
 		if (!res)
 		{
-			std::wcerr << L"Failed to download the new version" << std::endl;
+			std::cerr << "Failed to download the new version" << std::endl;
 			return false;
 		}
 
@@ -225,18 +240,18 @@ private:
 		// Copy the temp version to the new path
 		if (!std::filesystem::copy_file(m_tempExePath, m_newExePath, std::filesystem::copy_options::overwrite_existing))
 		{
-			std::wcerr << L"Failed to copy the temp version to the new path" << std::endl;
+			std::cerr << "Failed to copy the temp version to the new path" << std::endl;
 			return false;
 		}
 
 		if (exec(m_newExePath))
 		{
-			std::wcout << L"Exiting old instance" << std::endl;
+			std::cout << "Exiting old instance" << std::endl;
 			exit(0);
 		}
 		else
 		{
-			std::wcerr << L"Couldn't start the new version" << std::endl;
+			std::cerr << "Couldn't start the new version" << std::endl;
 			return false;
 		}
 	}
@@ -252,7 +267,7 @@ private:
 		if (m_isTemp)
 			return true;
 
-		std::cout << "Checking for updates..." << std::endl;
+		std::cout << "Checking for updates ..." << std::endl;
 
 		std::wstring url = std::format(L"{}/{}", s_baseUrl, s_versionFilename);
 
@@ -283,7 +298,7 @@ private:
 				return false;
 			}
 
-			std::wcout << std::format(L"New version available: {} -> {}\n", m_version.ToWString(), newVer.ToWString());
+			std::cout << std::format("New version available: {} -> {}\n", m_version.ToString(), newVer.ToString());
 
 			if (m_callback)
 				m_callback();
@@ -314,7 +329,7 @@ private:
 			std::wstring realName = m_exeName.substr(TEMP_PREFIX.size());
 			std::wstring realPath = std::format(L"{}\\{}", m_exePath, realName);
 			m_isTemp              = true;
-			std::wcout << L"Running from temp version ..." << std::endl;
+			std::cout << "Running from temp version ..." << std::endl;
 
 			// Wait for the old instance to exit
 			std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -328,7 +343,7 @@ private:
 					{
 						if (!std::filesystem::remove(realPath))
 						{
-							std::wcerr << L"Failed to remove the old version, sleeping and retrying ..." << std::endl;
+							std::cerr << "Failed to remove the old version, sleeping and retrying ..." << std::endl;
 							std::this_thread::sleep_for(std::chrono::milliseconds(100));
 						}
 					}
@@ -336,33 +351,33 @@ private:
 			}
 			catch (const std::exception& e)
 			{
-				std::wcerr << L"Failed to remove the old version: " << e.what() << std::endl;
+				std::cerr << "Failed to remove the old version: " << e.what() << std::endl;
 				return false;
 			}
 
 			// Copy the temp version
 			if (!std::filesystem::copy_file(m_fullExePath, realPath))
 			{
-				std::wcerr << L"Failed to copy the temp version to the real path" << std::endl;
+				std::cerr << "Failed to copy the temp version to the real path" << std::endl;
 				return false;
 			}
 
 			// Start the new version
 			if (exec(realPath))
 			{
-				std::wcout << L"Exiting temp instance" << std::endl;
+				std::cout << "Exiting temp instance" << std::endl;
 				exit(0);
 			}
 			else
 			{
-				std::wcerr << L"Failed to start the new version" << std::endl;
+				std::cerr << "Failed to start the new version" << std::endl;
 				return false;
 			}
 		}
 
 		if (std::filesystem::exists(std::format(L"{}\\_U_{}", m_exePath, m_exeName)))
 		{
-			std::wcout << L"Running from normal version, but old temp exists, deleting ..." << std::endl;
+			std::cout << "Running from normal version, but old temp exists, deleting ..." << std::endl;
 			std::filesystem::remove(std::format(L"{}\\_U_{}", m_exePath, m_exeName));
 		}
 
@@ -383,12 +398,12 @@ private:
 		{
 			CloseHandle(ProcessInfo.hThread);
 			CloseHandle(ProcessInfo.hProcess);
-			std::wcout << L"Successful" << std::endl;
+			std::cout << "Successful" << std::endl;
 			return true;
 		}
 		else
 		{
-			std::wcout << L"Failed" << std::endl;
+			std::cout << "Failed" << std::endl;
 			return false;
 		}
 	}
